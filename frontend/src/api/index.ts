@@ -4,8 +4,8 @@ import { Capacitor } from '@capacitor/core'
 // 根据平台选择 API 地址
 const getBaseURL = () => {
   if (Capacitor.isNativePlatform()) {
-    // 真机/模拟器：使用电脑的局域网 IP
-    return 'http://192.168.1.114:8000/api'
+    // 真机/模拟器：使用云端 API
+    return 'https://pal-budget-hanjunan875-6n099n0a.leapcell.dev/api'
   }
   // Web 开发环境：使用代理
   return '/api'
