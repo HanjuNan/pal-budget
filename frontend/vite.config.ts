@@ -54,8 +54,9 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
-        changeOrigin: true
+        target: 'https://pal-budget-hanjunan875-6n099n0a.leapcell.dev',
+        changeOrigin: true,
+        secure: true
       }
     }
   }
