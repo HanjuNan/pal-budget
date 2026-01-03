@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: pal-budget-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_API_BASE
+        value: https://api.siliconflow.cn/v1
+      - key: AI_MODEL
+        value: Qwen/Qwen2.5-7B-Instruct
+      - key: AI_VISION_MODEL
+        value: Qwen/Qwen3-VL-32B-Instruct
+    disk:
+      name: data
+      mountPath: /app/data
+      sizeGB: 1
