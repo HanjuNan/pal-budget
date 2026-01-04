@@ -67,28 +67,29 @@ async def get_user_stats(db: Session = Depends(get_db)):
     if user and user.created_at:
         days = (datetime.now() - user.created_at).days
 
-    # 统计总记录数 - 不依赖用户是否存在
-    total_records = db.query(Transaction).filter(
+    # 使用与statistics.py完全相同的查询模式
+    # 统计总记录数
+    total_records = db.query(func.count(Transaction.id)).filter(
         Transaction.user_id == 1
-    ).count()
+    ).scalar() or 0
 
-    # 统计总收入
-    income_query = db.query(Transaction).filter(
+    # 统计总收入 - 使用字符串值比较
+    total_income = db.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == 1,
         Transaction.type == 'income'
-    ).all()
-    total_income = sum(t.amount for t in income_query) if income_query else 0
+    ).scalar()
+    total_income = float(total_income) if total_income else 0.0
 
-    # 统计总支出
-    expense_query = db.query(Transaction).filter(
+    # 统计总支出 - 使用字符串值比较
+    total_expense = db.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == 1,
         Transaction.type == 'expense'
-    ).all()
-    total_expense = sum(t.amount for t in expense_query) if expense_query else 0
+    ).scalar()
+    total_expense = float(total_expense) if total_expense else 0.0
 
     return {
         "days": days,
         "total_records": total_records,
-        "total_income": float(total_income),
-        "total_expense": float(total_expense)
+        "total_income": total_income,
+        "total_expense": total_expense
     }
