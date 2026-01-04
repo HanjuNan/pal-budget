@@ -30,35 +30,49 @@ async def get_current_user(db: Session = Depends(get_db)):
     # TODO: 从认证中获取用户ID
     user = db.query(User).filter(User.id == 1).first()
     if not user:
-        # 创建默认用户
-        user = User(username="default", nickname="记账小达人")
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        # 创建默认用户，显式设置id=1以确保PostgreSQL兼容性
+        from sqlalchemy import text
+        # 先尝试插入id=1的用户
+        try:
+            user = User(id=1, username="default", nickname="记账小达人")
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            # 重置PostgreSQL序列以避免冲突
+            try:
+                db.execute(text("SELECT setval(pg_get_serial_sequence('myschema.users', 'id'), COALESCE((SELECT MAX(id) FROM myschema.users), 1))"))
+                db.commit()
+            except:
+                pass  # SQLite不支持此操作，忽略
+        except Exception as e:
+            db.rollback()
+            # 如果插入失败，可能是id冲突，尝试获取任意用户
+            user = db.query(User).first()
+            if not user:
+                raise HTTPException(status_code=500, detail="无法创建用户")
     return user
 
 
 @router.get("/stats")
 async def get_user_stats(db: Session = Depends(get_db)):
     """获取用户统计信息"""
+    # 尝试获取用户，用于计算记账天数
     user = db.query(User).filter(User.id == 1).first()
     if not user:
-        return {
-            "days": 0,
-            "total_records": 0,
-            "total_income": 0,
-            "total_expense": 0
-        }
+        # 尝试获取任意用户
+        user = db.query(User).first()
 
     # 计算记账天数
-    days = (datetime.now() - user.created_at).days if user.created_at else 0
+    days = 0
+    if user and user.created_at:
+        days = (datetime.now() - user.created_at).days
 
-    # 统计总记录数 - 使用子查询确保PostgreSQL兼容性
+    # 统计总记录数 - 不依赖用户是否存在
     total_records = db.query(Transaction).filter(
         Transaction.user_id == 1
     ).count()
 
-    # 统计总收入 - 使用字符串值比较以确保PostgreSQL兼容性
+    # 统计总收入
     income_query = db.query(Transaction).filter(
         Transaction.user_id == 1,
         Transaction.type == 'income'
