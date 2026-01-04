@@ -3,10 +3,36 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.routers import transactions, statistics, ai, user
-from app.database import engine, Base
+from app.database import engine, Base, SessionLocal
+from app.models import User
 
 # 创建数据库表
 Base.metadata.create_all(bind=engine)
+
+
+def init_default_user():
+    """确保默认用户存在"""
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == 1).first()
+        if not user:
+            default_user = User(
+                id=1,
+                username="default",
+                nickname="记账小达人"
+            )
+            db.add(default_user)
+            db.commit()
+            print("Created default user")
+    except Exception as e:
+        print(f"Error creating default user: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+
+# 初始化默认用户
+init_default_user()
 
 app = FastAPI(
     title="可爱记账 API",

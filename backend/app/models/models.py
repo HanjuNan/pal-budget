@@ -1,9 +1,13 @@
+import os
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
 
 from app.database import Base
+
+# PostgreSQL 时使用 myschema，SQLite 不需要 schema
+SCHEMA = "myschema" if os.environ.get("DATABASE_URL") else None
 
 
 class TransactionType(str, enum.Enum):
@@ -20,6 +24,7 @@ class TransactionSource(str, enum.Enum):
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = {"schema": SCHEMA} if SCHEMA else {}
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True)
@@ -32,6 +37,7 @@ class User(Base):
 
 class Category(Base):
     __tablename__ = "categories"
+    __table_args__ = {"schema": SCHEMA} if SCHEMA else {}
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(50), unique=True, index=True)
@@ -42,9 +48,10 @@ class Category(Base):
 
 class Transaction(Base):
     __tablename__ = "transactions"
+    __table_args__ = {"schema": SCHEMA} if SCHEMA else {}
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(Integer, ForeignKey(f"{SCHEMA}.users.id" if SCHEMA else "users.id"))
     type = Column(Enum(TransactionType))
     amount = Column(Float)
     category = Column(String(50))
