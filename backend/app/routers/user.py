@@ -53,21 +53,24 @@ async def get_user_stats(db: Session = Depends(get_db)):
     # 计算记账天数
     days = (datetime.now() - user.created_at).days if user.created_at else 0
 
-    # 统计总记录数
-    total_records = db.query(func.count(Transaction.id)).filter(
+    # 统计总记录数 - 使用子查询确保PostgreSQL兼容性
+    total_records = db.query(Transaction).filter(
         Transaction.user_id == 1
-    ).scalar() or 0
+    ).count()
 
-    # 统计总收入和支出 - 使用字符串值比较以确保PostgreSQL兼容性
-    total_income = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
+    # 统计总收入 - 使用字符串值比较以确保PostgreSQL兼容性
+    income_query = db.query(Transaction).filter(
         Transaction.user_id == 1,
         Transaction.type == 'income'
-    ).scalar()
+    ).all()
+    total_income = sum(t.amount for t in income_query) if income_query else 0
 
-    total_expense = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
+    # 统计总支出
+    expense_query = db.query(Transaction).filter(
         Transaction.user_id == 1,
         Transaction.type == 'expense'
-    ).scalar()
+    ).all()
+    total_expense = sum(t.amount for t in expense_query) if expense_query else 0
 
     return {
         "days": days,
