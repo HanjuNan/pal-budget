@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
+from datetime import datetime
 
 from app.database import get_db
-from app.models import User
+from app.models import User, Transaction
 from app.schemas import UserCreate, UserResponse
 
 router = APIRouter()
@@ -39,10 +41,6 @@ async def get_current_user(db: Session = Depends(get_db)):
 @router.get("/stats")
 async def get_user_stats(db: Session = Depends(get_db)):
     """获取用户统计信息"""
-    from app.models import Transaction
-    from sqlalchemy import func
-    from datetime import datetime
-
     user = db.query(User).filter(User.id == 1).first()
     if not user:
         return {
