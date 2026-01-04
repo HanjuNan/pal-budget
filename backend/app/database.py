@@ -1,12 +1,51 @@
 import os
+from pathlib import Path
+
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# 支持云端部署：使用环境变量或默认路径
-# 本地开发使用 ./pal_budget.db
-# 云端部署使用 /tmp/pal_budget.db (serverless 环境)
-DATABASE_PATH = os.environ.get("DATABASE_PATH", "./pal_budget.db")
+DEFAULT_DB_NAME = "pal_budget.db"
+
+
+def _resolve_database_path() -> str:
+    """Resolve an absolute path for the SQLite database.
+
+    Priorities:
+    1. Explicit DATABASE_PATH env.
+    2. DATABASE_DIR env or the Render persistent disk (/app/data).
+    3. Project working directory (local development).
+    """
+    env_path = os.getenv("DATABASE_PATH")
+    if env_path:
+        db_path = Path(env_path)
+    else:
+        data_dir_candidates = [
+            os.getenv("DATABASE_DIR"),
+            "/app/data",
+            os.getcwd(),
+        ]
+        db_path = None
+        for folder in data_dir_candidates:
+            if not folder:
+                continue
+            folder_path = Path(folder).expanduser()
+            try:
+                folder_path.mkdir(parents=True, exist_ok=True)
+            except Exception:
+                continue
+            if folder_path.is_dir():
+                db_path = folder_path / DEFAULT_DB_NAME
+                break
+        if db_path is None:
+            db_path = Path(DEFAULT_DB_NAME)
+
+    if db_path.parent:
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+    return str(db_path.resolve())
+
+
+DATABASE_PATH = _resolve_database_path()
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
 engine = create_engine(
