@@ -17,7 +17,7 @@ const initialLoading = ref(true)
 
 const loadData = async () => {
   try {
-    await transactionStore.initData()
+    await transactionStore.refreshAllData()
   } catch (e) {
     console.error('加载数据失败:', e)
   }
@@ -30,15 +30,16 @@ const handleRefresh = async () => {
 }
 
 onMounted(async () => {
-  await loadData()
+  await transactionStore.initData()
   initialLoading.value = false
 })
 
 // 当从其他页面返回时刷新数据
 onActivated(async () => {
-  // 确保每次激活时都刷新数据
-  await loadData()
-  initialLoading.value = false
+  if (!initialLoading.value) {
+    // 只有在非首次加载时才刷新
+    await loadData()
+  }
 })
 </script>
 

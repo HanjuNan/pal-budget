@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract
+from sqlalchemy import func, and_
 from datetime import date, datetime, timedelta
 from typing import List
+from calendar import monthrange
 
 from app.database import get_db
 from app.models import Transaction, TransactionType
@@ -23,30 +24,40 @@ async def get_monthly_stats(
     if not month:
         month = datetime.now().month
 
-    # 基础过滤条件
-    base_filters = [
+    # 计算月份的开始和结束日期
+    start_date = date(year, month, 1)
+    _, last_day = monthrange(year, month)
+    end_date = date(year, month, last_day)
+
+    # 查询收入
+    income_result = db.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == 1,
-        extract('year', Transaction.date) == year,
-        extract('month', Transaction.date) == month
-    ]
-
-    # 分别查询收入和支出，避免查询链问题
-    income = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
-        *base_filters,
-        Transaction.type == TransactionType.income
+        Transaction.type == TransactionType.income,
+        Transaction.date >= start_date,
+        Transaction.date <= end_date
     ).scalar()
+    income = float(income_result) if income_result else 0.0
 
-    expense = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
-        *base_filters,
-        Transaction.type == TransactionType.expense
+    # 查询支出
+    expense_result = db.query(func.sum(Transaction.amount)).filter(
+        Transaction.user_id == 1,
+        Transaction.type == TransactionType.expense,
+        Transaction.date >= start_date,
+        Transaction.date <= end_date
     ).scalar()
+    expense = float(expense_result) if expense_result else 0.0
 
-    count = db.query(Transaction).filter(*base_filters).count()
+    # 查询交易数量
+    count = db.query(Transaction).filter(
+        Transaction.user_id == 1,
+        Transaction.date >= start_date,
+        Transaction.date <= end_date
+    ).count()
 
     return MonthlyStats(
-        balance=float(income) - float(expense),
-        income=float(income),
-        expense=float(expense),
+        balance=income - expense,
+        income=income,
+        expense=expense,
         transaction_count=count
     )
 
@@ -64,6 +75,11 @@ async def get_category_stats(
     if not month:
         month = datetime.now().month
 
+    # 计算月份的开始和结束日期
+    start_date = date(year, month, 1)
+    _, last_day = monthrange(year, month)
+    end_date = date(year, month, last_day)
+
     results = db.query(
         Transaction.category,
         func.sum(Transaction.amount).label('amount'),
@@ -71,8 +87,8 @@ async def get_category_stats(
     ).filter(
         Transaction.user_id == 1,
         Transaction.type == type,
-        extract('year', Transaction.date) == year,
-        extract('month', Transaction.date) == month
+        Transaction.date >= start_date,
+        Transaction.date <= end_date
     ).group_by(Transaction.category).all()
 
     total = sum(r.amount for r in results) if results else 0

@@ -114,12 +114,30 @@ export const useTransactionStore = defineStore('transaction', () => {
 
   // 初始化数据
   const initData = async () => {
-    await Promise.all([
-      fetchTransactions({ limit: 50 }),
-      fetchMonthlyStats(),
-      fetchCategoryStats(),
-      fetchTrendData()
-    ])
+    // 串行执行以确保数据一致性
+    try {
+      await fetchTransactions({ limit: 50 })
+      await fetchMonthlyStats()
+      await fetchCategoryStats()
+      await fetchTrendData()
+    } catch (e) {
+      console.error('初始化数据失败:', e)
+    }
+  }
+
+  // 强制刷新所有数据
+  const refreshAllData = async () => {
+    loading.value = true
+    try {
+      await fetchTransactions({ limit: 50 })
+      await fetchMonthlyStats()
+      await fetchCategoryStats()
+      await fetchTrendData()
+    } catch (e) {
+      console.error('刷新数据失败:', e)
+    } finally {
+      loading.value = false
+    }
   }
 
   return {
@@ -140,6 +158,7 @@ export const useTransactionStore = defineStore('transaction', () => {
     fetchTrendData,
     addTransaction,
     removeTransaction,
-    initData
+    initData,
+    refreshAllData
   }
 })
