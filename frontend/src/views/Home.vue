@@ -15,21 +15,29 @@ const transactionStore = useTransactionStore()
 const refreshing = ref(false)
 const initialLoading = ref(true)
 
+const loadData = async () => {
+  try {
+    await transactionStore.initData()
+  } catch (e) {
+    console.error('加载数据失败:', e)
+  }
+}
+
 const handleRefresh = async () => {
   refreshing.value = true
-  await transactionStore.initData()
+  await loadData()
   refreshing.value = false
 }
 
 onMounted(async () => {
-  await transactionStore.initData()
+  await loadData()
   initialLoading.value = false
 })
 
 // 当从其他页面返回时刷新数据
 onActivated(async () => {
-  // 总是刷新数据，确保显示最新记录
-  await transactionStore.initData()
+  // 确保每次激活时都刷新数据
+  await loadData()
   initialLoading.value = false
 })
 </script>

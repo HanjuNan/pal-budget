@@ -1,5 +1,6 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.routers import transactions, statistics, ai, user
 from app.database import engine, Base
@@ -12,6 +13,19 @@ app = FastAPI(
     description="一个可爱的记账应用后端服务",
     version="1.0.0"
 )
+
+
+# 禁用缓存中间件
+class NoCacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
+
+app.add_middleware(NoCacheMiddleware)
 
 # CORS 配置 - 允许所有来源以支持移动端和云端部署
 app.add_middleware(

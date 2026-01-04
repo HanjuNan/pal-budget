@@ -23,21 +23,25 @@ async def get_monthly_stats(
     if not month:
         month = datetime.now().month
 
-    query = db.query(Transaction).filter(
+    # 基础过滤条件
+    base_filters = [
         Transaction.user_id == 1,
         extract('year', Transaction.date) == year,
         extract('month', Transaction.date) == month
-    )
+    ]
 
-    income = query.filter(Transaction.type == TransactionType.income).with_entities(
-        func.coalesce(func.sum(Transaction.amount), 0)
+    # 分别查询收入和支出，避免查询链问题
+    income = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
+        *base_filters,
+        Transaction.type == TransactionType.income
     ).scalar()
 
-    expense = query.filter(Transaction.type == TransactionType.expense).with_entities(
-        func.coalesce(func.sum(Transaction.amount), 0)
+    expense = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
+        *base_filters,
+        Transaction.type == TransactionType.expense
     ).scalar()
 
-    count = query.count()
+    count = db.query(Transaction).filter(*base_filters).count()
 
     return MonthlyStats(
         balance=float(income) - float(expense),

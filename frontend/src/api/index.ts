@@ -15,14 +15,22 @@ const api = axios.create({
   baseURL: getBaseURL(),
   timeout: 10000,
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache'
   }
 })
 
 // 请求拦截器
 api.interceptors.request.use(
   (config) => {
-    // TODO: 添加 token
+    // 为 GET 请求添加时间戳防止缓存
+    if (config.method === 'get') {
+      config.params = {
+        ...config.params,
+        _t: Date.now()
+      }
+    }
     return config
   },
   (error) => {
