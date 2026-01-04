@@ -130,9 +130,12 @@ async def export_transactions_csv(
 
     # 写入数据
     for t in transactions:
-        type_name = '收入' if t.type == TransactionType.income else '支出'
+        # 使用字符串比较以确保PostgreSQL兼容性
+        type_str = t.type.value if hasattr(t.type, 'value') else t.type
+        type_name = '收入' if type_str == 'income' else '支出'
         source_map = {'manual': '手动', 'voice': '语音', 'photo': '拍照', 'ai': 'AI'}
-        source_name = source_map.get(t.source.value, t.source.value) if t.source else '-'
+        source_value = t.source.value if hasattr(t.source, 'value') else t.source
+        source_name = source_map.get(source_value, source_value) if t.source else '-'
 
         writer.writerow([
             t.date.strftime('%Y-%m-%d'),

@@ -29,30 +29,30 @@ async def get_monthly_stats(
     _, last_day = monthrange(year, month)
     end_date = date(year, month, last_day)
 
-    # 查询收入
+    # 查询收入 - 使用字符串值比较以确保PostgreSQL兼容性
     income_result = db.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == 1,
-        Transaction.type == TransactionType.income,
+        Transaction.type == 'income',
         Transaction.date >= start_date,
         Transaction.date <= end_date
     ).scalar()
     income = float(income_result) if income_result else 0.0
 
-    # 查询支出
+    # 查询支出 - 使用字符串值比较以确保PostgreSQL兼容性
     expense_result = db.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == 1,
-        Transaction.type == TransactionType.expense,
+        Transaction.type == 'expense',
         Transaction.date >= start_date,
         Transaction.date <= end_date
     ).scalar()
     expense = float(expense_result) if expense_result else 0.0
 
     # 查询交易数量
-    count = db.query(Transaction).filter(
+    count = db.query(func.count(Transaction.id)).filter(
         Transaction.user_id == 1,
         Transaction.date >= start_date,
         Transaction.date <= end_date
-    ).count()
+    ).scalar() or 0
 
     return MonthlyStats(
         balance=income - expense,
@@ -80,13 +80,16 @@ async def get_category_stats(
     _, last_day = monthrange(year, month)
     end_date = date(year, month, last_day)
 
+    # 使用字符串值比较以确保PostgreSQL兼容性
+    type_value = type.value if hasattr(type, 'value') else type
+
     results = db.query(
         Transaction.category,
         func.sum(Transaction.amount).label('amount'),
         func.count(Transaction.id).label('count')
     ).filter(
         Transaction.user_id == 1,
-        Transaction.type == type,
+        Transaction.type == type_value,
         Transaction.date >= start_date,
         Transaction.date <= end_date
     ).group_by(Transaction.category).all()
@@ -136,7 +139,7 @@ async def get_trend_stats(
 
     for r in results:
         date_str = r.date.strftime('%m/%d')
-        if r.type == TransactionType.expense:
+        if r.type == 'expense' or (hasattr(r.type, 'value') and r.type.value == 'expense'):
             expense_data[date_str] = float(r.amount)
         else:
             income_data[date_str] = float(r.amount)

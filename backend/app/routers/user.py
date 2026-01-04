@@ -58,19 +58,17 @@ async def get_user_stats(db: Session = Depends(get_db)):
     # 统计总记录数
     total_records = db.query(func.count(Transaction.id)).filter(
         Transaction.user_id == 1
-    ).scalar()
+    ).scalar() or 0
 
-    # 统计总收入和支出
-    from app.models import TransactionType
-
+    # 统计总收入和支出 - 使用字符串值比较以确保PostgreSQL兼容性
     total_income = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
         Transaction.user_id == 1,
-        Transaction.type == TransactionType.income
+        Transaction.type == 'income'
     ).scalar()
 
     total_expense = db.query(func.coalesce(func.sum(Transaction.amount), 0)).filter(
         Transaction.user_id == 1,
-        Transaction.type == TransactionType.expense
+        Transaction.type == 'expense'
     ).scalar()
 
     return {
