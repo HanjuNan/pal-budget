@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.database import get_db
 from app.models import User, Transaction
@@ -62,10 +62,18 @@ async def get_user_stats(db: Session = Depends(get_db)):
         # 尝试获取任意用户
         user = db.query(User).first()
 
-    # 计算记账天数
+    # 计算记账天数 - 使用UTC时间避免时区问题
     days = 0
     if user and user.created_at:
-        days = (datetime.now() - user.created_at).days
+        try:
+            now = datetime.now(timezone.utc)
+            created = user.created_at
+            # 如果created_at没有时区信息，添加UTC时区
+            if created.tzinfo is None:
+                created = created.replace(tzinfo=timezone.utc)
+            days = (now - created).days
+        except Exception:
+            days = 0
 
     # 使用与statistics.py完全相同的查询模式
     # 统计总记录数
